@@ -1,0 +1,41 @@
+FROM server:latest
+
+# add pyspark
+USER root
+RUN yum install -y python38-pip && \
+    pip3 install pyspark && \
+    pip3 install pyspark-pandas && \
+    pip3 install pyarrow
+
+# add spark user
+ARG spark_passwd=spark
+RUN useradd spark && \
+    echo ${spark_passwd} | passwd spark --stdin && \
+    usermod -aG wheel spark && \
+    echo 'spark ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/spark
+
+#install spark 3.4.0
+WORKDIR /usr/local
+RUN wget --no-check-certificate -O spark.tgz https://dlcdn.apache.org/spark/spark-3.4.0/spark-3.4.0-bin-hadoop3.tgz
+RUN tar -xvzf spark.tgz && \
+    rm -f spark.tgz && \
+    mv spark-3.4.0-bin-hadoop3 spark && \
+    rm -f ./spark/conf/* && \
+    chown -R spark:spark ./spark
+
+#install hadoop-aws for spark
+WORKDIR /usr/local/spark/jars
+RUN sudo wget --no-check-certificate https://repo.maven.apache.org/maven2/org/apache/spark/spark-hadoop-cloud_2.12/3.4.0/spark-hadoop-cloud_2.12-3.4.0.jar && \
+    sudo wget --no-check-certificate https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar && \
+    sudo wget --no-check-certificate https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar
+COPY ./jars/hadoop-common-3.3.4.jar ./
+
+#set server start init
+WORKDIR /etc/init.d
+COPY ./etc.init.d/spark ./
+RUN chown root:root ./spark && \
+    chmod +x ./spark && \
+    chkconfig --add spark && \
+    chkconfig --level 345 spark on
+
+EXPOSE 4040 8080 8081 18080

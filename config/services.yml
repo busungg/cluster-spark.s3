@@ -1,0 +1,41 @@
+master:
+  container_name: master
+  privileged: true
+  build:
+    context: "{abspath}/dockerfile/master{1:}"
+    dockerfile: dockerfile
+    args:
+      spark-passwd: "spark"
+  hostname: master
+  user: root
+  networks:
+    cluster:
+      ipv4_address: "{net}.10"
+  volumes:
+    - spark.ssh:/home/spark/.ssh
+  ports:
+    - "2222:22"
+    - "4040:4040"
+    - "8080:8080"
+    - "18080:18080"
+  command: /sbin/init
+worker:
+  container_name: "worker{1:}"
+  privileged: true
+  build:
+    context: "{abspath}/dockerfile/worker{1:}"
+    dockerfile: dockerfile
+    args:
+      spark-passwd: "spark"
+  hostname: "worker{1:}"
+  user: root
+  networks:
+    cluster:
+      ipv4_address: "{net}.{11:}"
+  volumes:
+    - spark.ssh:/home/spark/.ssh
+  ports:
+    - "{2223:}:22"
+    - "{8042:}:8042"
+    - "{8081:}:8081"
+  command: /sbin/init
